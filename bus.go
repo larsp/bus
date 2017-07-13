@@ -11,7 +11,8 @@ type EventBus interface {
 	// Register an event handler
 	Register(function interface{}, forTypes ...interface{}) error
 
-	// Publish an event to the EventBus
+	// Publish will push the passed event to a channel. If that channel is full this method will block.
+	// In order to avoid blocking the user could wrap Publish into a goroutine.
 	Publish(event interface{}) error
 }
 
@@ -23,7 +24,9 @@ type eventBus struct {
 	queue    chan interface{}
 }
 
-// New constructs a new EventBus instance
+// New creates a new bus instances. Given your workload you need to specify the following parameters:
+// queueSize is used in order to create a channel with given size.
+// workers creates as many workers to process events from the channel.
 func New(queueSize int, workers int) EventBus {
 	bus := &eventBus{
 		make(map[reflect.Type]map[reflect.Value]bool),
@@ -68,8 +71,6 @@ func (bus *eventBus) Register(fn interface{}, forTypes ...interface{}) error {
 	return nil
 }
 
-// Publish will push the passed event to a channel. If that channel is full this method will block.
-// In order to avoid blocking the user could wrap Publish into a goroutine
 func (bus *eventBus) Publish(event interface{}) error {
 	bus.lock.RLock()
 	defer bus.lock.RUnlock()
